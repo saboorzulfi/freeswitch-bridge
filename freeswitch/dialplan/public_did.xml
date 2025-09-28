@@ -1,0 +1,10 @@
+<include>
+  <extension name="didlogic-inbound">
+    <condition field="destination_number" expression="^(0145405558)$">
+      <action application="log" data="INFO Inbound call to DID ${destination_number}"/>
+      <!-- Example: route to a local extension or IVR -->
+      <action application="bridge" data="sofia/internal/1001"/>
+    </condition>
+  </extension>
+</include>
+

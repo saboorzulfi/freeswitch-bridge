@@ -1,0 +1,22 @@
+{
+  "esl": {
+    "host": "127.0.0.1",
+    "port": 8021,
+    "password": "ClueCon"
+  },
+  "dialer": {
+    "maxRounds": 3,
+    "agentRingSeconds": 20,
+    "leadRingSeconds": 25,
+    "agentPrefix": "sofia/internal/",
+    "leadPrefix": "sofia/gateway/my_trunk/"
+  },
+  "logging": {
+    "level": "info"
+  },
+  "mongo": {
+    "uri": "mongodb://localhost:27017",
+    "db": "fs_preview_dialer"
+  }
+}
+

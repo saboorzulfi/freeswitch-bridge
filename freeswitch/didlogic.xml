@@ -1,0 +1,14 @@
+<include>
+  <gateway name="didlogic">
+    <param name="username" value="18125"/>
+    <param name="password" value="Ora@333666999"/>
+    <param name="proxy" value="sip.de.didlogic.net"/>
+    <param name="realm" value="sip.de.didlogic.net"/>
+    <param name="from-domain" value="sip.de.didlogic.net"/>
+    <param name="register" value="true"/>
+    <param name="expire-seconds" value="3600"/>
+    <param name="retry-seconds" value="30"/>
+    <param name="caller-id-in-from" value="true"/>
+  </gateway>
+</include>
+
