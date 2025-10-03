@@ -27,7 +27,7 @@ export function buildRoutes() {
 
   router.get('/health', (req, res) => res.json({ ok: true }));
 
-  router.post('/dial', async (req, res) => {
+  router.post('/api/dial', async (req, res) => {
     try {
       const parsed = bodySchema.parse(req.body);
       const agentDialStrings = toDialStringsFromAgents(parsed.agents.map(n => ({ number: n })));
