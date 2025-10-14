@@ -18,7 +18,7 @@ export class PreviewDialerService {
         const agentUuid = generateUuid();
         logger.info({ agentDest, agentUuid }, 'Originating to agent');
         await this.repo.logAttempt({ round, role: 'agent', destination: agentDest, uuid: agentUuid });
-        await originateLeg(this.con, agentDest, {
+        await originateParked(this.con, agentDest, {
           origination_uuid: agentUuid,
           ignore_early_media: 'true',
           call_direction: 'outbound',
@@ -28,7 +28,7 @@ export class PreviewDialerService {
           rtp_timeout: '60',
           rtp_hold_timeout: '60',
           media_timeout: '60',
-          park_after_bridge: 'false',
+          continue_on_fail: 'true',
         });
 
         const agentAnswered = await waitForAnswer(this.con, agentUuid, agentRingSeconds * 1000);
