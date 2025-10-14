@@ -43,26 +43,45 @@ export function uuidKill(con, uuid) {
 
 export function waitForAnswer(con, uuid, timeoutMs) {
   return new Promise((resolve) => {
-    let done = false;
-    const timer = setTimeout(() => {
-      if (done) return;
-      done = true;
+    let resolved = false;
+
+    const cleanup = () => {
       con.removeListener('esl::event::CHANNEL_ANSWER::*', onAnswer);
+      con.removeListener('esl::event::CHANNEL_PARK::*', onPark);
+    };
+
+    const timer = setTimeout(() => {
+      if (resolved) return;
+      resolved = true;
+      cleanup();
       resolve(false);
     }, timeoutMs);
+
+    function markAnswered() {
+      if (resolved) return;
+      resolved = true;
+      clearTimeout(timer);
+      cleanup();
+      resolve(true);
+    }
 
     function onAnswer(evt) {
       const chanUuid = evt.getHeader('Unique-ID');
       if (chanUuid === uuid) {
-        if (done) return;
-        done = true;
-        clearTimeout(timer);
-        con.removeListener('esl::event::CHANNEL_ANSWER::*', onAnswer);
-        resolve(true);
+        markAnswered();
+      }
+    }
+
+    function onPark(evt) {
+      const chanUuid = evt.getHeader('Unique-ID');
+      if (chanUuid === uuid) {
+        // Channels originated with &park often emit CHANNEL_PARK right after answer
+        markAnswered();
       }
     }
 
     con.on('esl::event::CHANNEL_ANSWER::*', onAnswer);
+    con.on('esl::event::CHANNEL_PARK::*', onPark);
   });
 }
 
