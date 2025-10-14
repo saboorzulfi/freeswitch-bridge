@@ -61,25 +61,33 @@ async function startCallFlow(con) {
 
 // --- Helper: Wait for answer events
 function waitForAnswer(con, uuid, timeoutMs) {
-  return new Promise(resolve => {
-    let resolved = false;
-    const timer = setTimeout(() => {
-      if (!resolved) {
-        resolved = true;
-        resolve(false);
-      }
-    }, timeoutMs);
-
-    const onAnswer = evt => {
-      const chanUuid = evt.getHeader('Unique-ID');
-      if (chanUuid === uuid && !resolved) {
-        resolved = true;
-        clearTimeout(timer);
-        console.log(`✅ CHANNEL_ANSWER detected for ${uuid}`);
-        resolve(true);
-      }
-    };
-
-    con.on('esl::event::CHANNEL_ANSWER::*', onAnswer);
-  });
-}
+    return new Promise(resolve => {
+      let resolved = false;
+      const timer = setTimeout(() => {
+        if (!resolved) {
+          resolved = true;
+          resolve(false);
+        }
+      }, timeoutMs);
+  
+      const onCreate = evt => {
+        const aLeg = evt.getHeader('Other-Leg-Unique-ID');
+        if (aLeg === uuid) {
+          const bLeg = evt.getHeader('Unique-ID');
+          console.log(`🔄 Captured B-leg UUID: ${bLeg}`);
+          // Start listening for B-leg answer
+          con.on('esl::event::CHANNEL_ANSWER::*', evt2 => {
+            if (evt2.getHeader('Unique-ID') === bLeg && !resolved) {
+              resolved = true;
+              clearTimeout(timer);
+              console.log(`✅ B-leg (phone) answered: ${bLeg}`);
+              resolve(true);
+            }
+          });
+        }
+      };
+  
+      con.on('esl::event::CHANNEL_CREATE::*', onCreate);
+    });
+  }
+  
