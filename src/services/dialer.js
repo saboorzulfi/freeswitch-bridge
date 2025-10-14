@@ -26,6 +26,9 @@ export class PreviewDialerService {
           originate_timeout: agentRingSeconds,
           effective_caller_id_number: config.dialer.didNumber,
           origination_caller_id_number: config.dialer.didNumber,
+          rtp_timeout: '60',
+          rtp_hold_timeout: '60',
+          media_timeout: '60',
         });
 
         const agentAnswered = await waitForAnswer(this.con, agentUuid, agentRingSeconds * 1000);
@@ -48,6 +51,9 @@ export class PreviewDialerService {
           originate_timeout: leadRingSeconds,
           effective_caller_id_number: config.dialer.didNumber,
           origination_caller_id_number: config.dialer.didNumber,
+          rtp_timeout: '60',
+          rtp_hold_timeout: '60',
+          media_timeout: '60',
         });
 
         const leadAnswered = await waitForAnswer(this.con, leadUuid, leadRingSeconds * 1000);
