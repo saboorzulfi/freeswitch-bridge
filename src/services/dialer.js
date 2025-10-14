@@ -12,7 +12,7 @@ export class PreviewDialerService {
   async dialLeadWithAgents(agentDestinations, leadDestination) {
     const { maxRounds, agentRingSeconds, leadRingSeconds } = config.dialer;
 
-    for (let round = 1; round <= maxRounds; round++) {
+    // for (let round = 1; round <= maxRounds; round++) {
       logger.info({ round }, 'Starting agent round');
       for (const agentDest of agentDestinations) {
         const agentUuid = generateUuid();
@@ -95,7 +95,7 @@ export class PreviewDialerService {
         logger.info({ agentUuid, leadUuid }, 'Bridge process completed');
         return { disposition: 'bridged', agent: agentDest, roundsTried: round };
       }
-    }
+    // }
     await this.repo.logOutcome({ role: 'campaign', outcome: 'unanswered' });
     return { disposition: 'unanswered' };
   }
