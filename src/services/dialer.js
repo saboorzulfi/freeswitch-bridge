@@ -18,7 +18,7 @@ export class PreviewDialerService {
         const agentUuid = generateUuid();
         logger.info({ agentDest, agentUuid }, 'Originating to agent');
         await this.repo.logAttempt({ round, role: 'agent', destination: agentDest, uuid: agentUuid });
-        await originateLeg(this.con, agentDest, {
+        await originateParked(this.con, agentDest, {
           origination_uuid: agentUuid,
           ignore_early_media: 'true',
           call_direction: 'outbound',
@@ -45,7 +45,7 @@ export class PreviewDialerService {
         const leadUuid = generateUuid();
         logger.info({ leadDestination, leadUuid }, 'Originating to lead');
         await this.repo.logAttempt({ round, role: 'lead', destination: leadDestination, uuid: leadUuid, agentUuid });
-        await originateLeg(this.con, leadDestination, {
+        await originateParked(this.con, leadDestination, {
           origination_uuid: leadUuid,
           ignore_early_media: 'true',
           call_direction: 'outbound',
