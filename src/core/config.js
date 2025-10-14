@@ -37,7 +37,7 @@ export const config = {
     agentPrefix: 'sofia/gateway/didlogic/',
     leadPrefix: 'sofia/gateway/didlogic/',
     // For reference: DID used for inbound (not used directly in code yet)
-    didNumber: '0145405558',
+    didNumber: '442039960029',
   },
   logging: {
     level: process.env.LOG_LEVEL || defaultConfig.logging?.level || 'info',
@@ -59,9 +59,9 @@ export const config = {
   // SIP trunk details for reference/config (FreeSWITCH gateway should be named 'didlogic')
   siptrunk: {
     gatewayName: 'didlogic',
-    ip: 'sip.de.didlogic.net',
-    username: '18125',
-    password: 'Ora@333666999',
+    ip: 'sip.uk.didlogic.net',
+    username: 'spotcall',
+    password: 'AU7183GHAh',
     network: {
       externalSipIp: '172.31.46.80',
       externalRtpIp: '172.31.46.80',
