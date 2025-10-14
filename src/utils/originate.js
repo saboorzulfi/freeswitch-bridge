@@ -25,6 +25,17 @@ export function originateLeg(con, destination, vars = {}) {
   });
 }
 
+export function originateParked(con, destination, vars = {}) {
+  const varString = buildVarString(vars);
+  const cmd = `originate ${varString}${destination} &park`;
+  logger.debug({ cmd }, 'BGAPI originate');
+  return new Promise((resolve) => {
+    con.bgapi(cmd, (res) => {
+      resolve(res.getBody());
+    });
+  });
+}
+
 export function uuidBridge(con, aUuid, bUuid) {
   const cmd = `uuid_bridge ${aUuid} ${bUuid}`;
   logger.debug({ cmd }, 'BGAPI uuid_bridge');
