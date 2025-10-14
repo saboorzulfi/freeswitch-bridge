@@ -60,7 +60,7 @@ export const config = {
   siptrunk: {
     gatewayName: 'didlogic',
     ip: 'sip.uk.didlogic.net',
-    username: 'spotcall',
+    username: '52762',
     password: 'AU7183GHAh',
     network: {
       externalSipIp: '172.31.46.80',
