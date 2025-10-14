@@ -13,6 +13,7 @@ export class PreviewDialerService {
     const { maxRounds, agentRingSeconds, leadRingSeconds } = config.dialer;
 
     // for (let round = 1; round <= maxRounds; round++) {
+    let round = 1;
       logger.info({ round }, 'Starting agent round');
       for (const agentDest of agentDestinations) {
         const agentUuid = generateUuid();
