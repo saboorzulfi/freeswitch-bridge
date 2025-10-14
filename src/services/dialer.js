@@ -41,7 +41,8 @@ export class PreviewDialerService {
         }
 
         logger.info({ agentDest, agentUuid }, 'Agent answered successfully');
-
+        await new Promise(resolve => setTimeout(resolve, 1000)); // 1s delay
+        
         // Agent answered; now call the lead
         const leadUuid = generateUuid();
         logger.info({ leadDestination, leadUuid }, 'Originating to lead');
@@ -53,10 +54,14 @@ export class PreviewDialerService {
           originate_timeout: leadRingSeconds,
           effective_caller_id_number: config.dialer.didNumber,
           origination_caller_id_number: config.dialer.didNumber,
+          continue_on_fail: 'true',
+          hangup_after_bridge: 'false',
+          park_after_bridge: 'false',
           rtp_timeout: '60',
           rtp_hold_timeout: '60',
           media_timeout: '60',
         });
+        
 
         const leadAnswered = await waitForAnswer(this.con, leadUuid, leadRingSeconds * 1000);
         if (!leadAnswered) {

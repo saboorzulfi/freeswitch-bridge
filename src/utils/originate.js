@@ -26,9 +26,24 @@ export function originateLeg(con, destination, vars = {}) {
 }
 
 export function originateParked(con, destination, vars = {}) {
-  const varString = buildVarString(vars);
-  const cmd = `originate ${varString}${destination} &park`;
-  logger.info({ cmd, destination, vars }, 'BGAPI originate with park');
+  const defaultVars = {
+    ignore_early_media: 'true',
+    continue_on_fail: 'true',
+    hangup_after_bridge: 'false',
+    park_after_bridge: 'false',
+    leg_timeout: '0',
+    originate_timeout: '25',
+    rtp_timeout: '60',
+    rtp_hold_timeout: '60',
+    media_timeout: '60',
+    call_direction: 'outbound',
+  };
+
+  const mergedVars = { ...defaultVars, ...vars };
+  const varString = buildVarString(mergedVars);
+  const cmd = `originate ${varString}${destination} &park()`;
+
+  logger.info({ cmd, destination, vars: mergedVars }, 'BGAPI originate with &park()');
   return new Promise((resolve) => {
     con.bgapi(cmd, (res) => {
       logger.info({ response: res.getBody() }, 'Originate response');
@@ -36,6 +51,19 @@ export function originateParked(con, destination, vars = {}) {
     });
   });
 }
+
+
+// export function originateParked(con, destination, vars = {}) {
+//   const varString = buildVarString(vars);
+//   const cmd = `originate ${varString}${destination} &park`;
+//   logger.info({ cmd, destination, vars }, 'BGAPI originate with park');
+//   return new Promise((resolve) => {
+//     con.bgapi(cmd, (res) => {
+//       logger.info({ response: res.getBody() }, 'Originate response');
+//       resolve(res.getBody());
+//     });
+//   });
+// }
 
 export function uuidTransfer(con, aUuid, bUuid) {
   const cmd = `uuid_transfer ${aUuid} ${bUuid}`;
