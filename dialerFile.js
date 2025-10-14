@@ -1,13 +1,14 @@
 import ESL from 'modesl';
 import crypto from 'crypto';
 
+// ESL connection details
 const HOST = '127.0.0.1';
 const PORT = 8021;
-const PASSWORD = 'ClueCon'; // default ESL password, change if different
+const PASSWORD = 'ClueCon'; // change if different
 
-// Replace with your numbers or gateways
-const AGENT_NUMBER = 'sofia/gateway/didlogic/+923084283344';
-const LEAD_NUMBER  = 'sofia/gateway/didlogic/+923091487321';
+// ✅ Use the working gateway pattern (as tested via fs_cli)
+const AGENT_NUMBER = 'sofia/gateway/external::didlogic/+923084283344';
+const LEAD_NUMBER  = 'sofia/gateway/external::didlogic/+923091487321';
 
 // --- Helper: Generate UUID
 function uuid() {
@@ -17,7 +18,6 @@ function uuid() {
 // --- Connect to ESL
 const conn = new ESL.Connection(HOST, PORT, PASSWORD, () => {
   console.log('✅ Connected to FreeSWITCH ESL');
-
   startCallFlow(conn).catch(err => console.error('❌ Error:', err));
 });
 
@@ -45,7 +45,7 @@ async function startCallFlow(con) {
 
   const leadAnswered = await waitForAnswer(con, leadUuid, 30000);
   if (!leadAnswered) {
-    console.log('❌ Lead did not answer');
+    console.log('❌ Lead did not answer, hanging up agent...');
     con.bgapi(`uuid_kill ${agentUuid}`);
     return;
   }
