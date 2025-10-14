@@ -68,27 +68,27 @@ export class PreviewDialerService {
 
         logger.info({ leadDestination, leadUuid }, 'Lead answered successfully');
 
-        // Both answered; bridge
-        logger.info({ agentUuid, leadUuid }, 'Both answered, preparing to bridge');
+        // Both answered; transfer agent to lead
+        logger.info({ agentUuid, leadUuid }, 'Both answered, transferring agent to lead');
         
         // Small delay to ensure both channels are stable
         await new Promise(resolve => setTimeout(resolve, 1000));
         
-        logger.info({ agentUuid, leadUuid }, 'Bridging agent and lead');
+        logger.info({ agentUuid, leadUuid }, 'Transferring agent to lead');
         
-        // Use uuid_bridge with both channels to create a conference
+        // Use uuid_transfer to transfer the agent to the lead
         try {
-          await uuidBridge(this.con, agentUuid, leadUuid);
-          logger.info({ agentUuid, leadUuid }, 'Bridge completed successfully');
+          await uuidTransfer(this.con, agentUuid, leadUuid);
+          logger.info({ agentUuid, leadUuid }, 'Transfer completed successfully');
         } catch (err) {
-          logger.error({ err, agentUuid, leadUuid }, 'Bridge failed');
-          // If bridge fails, kill both channels
+          logger.error({ err, agentUuid, leadUuid }, 'Transfer failed');
+          // If transfer fails, kill both channels
           await uuidKill(this.con, agentUuid);
           await uuidKill(this.con, leadUuid);
           continue;
         }
         
-        // Wait a moment to ensure bridge is established
+        // Wait a moment to ensure transfer is established
         await new Promise(resolve => setTimeout(resolve, 500));
         
         await this.repo.logOutcome({ round, role: 'bridge', destination: 'agent<->lead', outcome: 'bridged', agentUuid, leadUuid });

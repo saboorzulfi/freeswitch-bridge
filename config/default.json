@@ -5,7 +5,7 @@
     "password": "ClueCon"
   },
   "dialer": {
-    "maxRounds": 3,
+    "maxRounds": 1,
     "agentRingSeconds": 20,
     "leadRingSeconds": 25,
     "agentPrefix": "sofia/internal/",
