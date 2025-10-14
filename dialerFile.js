@@ -1,24 +1,28 @@
 import ESL from 'modesl';
 import crypto from 'crypto';
 
-// ESL connection details
 const HOST = '127.0.0.1';
 const PORT = 8021;
-const PASSWORD = 'ClueCon'; // change if different
+const PASSWORD = 'ClueCon'; // default ESL password
 
-// ✅ Use the working gateway pattern (as tested via fs_cli)
+// ✅ Working dial strings (same as fs_cli)
 const AGENT_NUMBER = 'sofia/gateway/external::didlogic/+923084283344';
 const LEAD_NUMBER  = 'sofia/gateway/external::didlogic/+923091487321';
 
-// --- Helper: Generate UUID
+// --- Generate UUID
 function uuid() {
   return crypto.randomUUID();
 }
 
 // --- Connect to ESL
-const conn = new ESL.Connection(HOST, PORT, PASSWORD, () => {
+const conn = new ESL.Connection(HOST, PORT, PASSWORD, async () => {
   console.log('✅ Connected to FreeSWITCH ESL');
-  startCallFlow(conn).catch(err => console.error('❌ Error:', err));
+
+  try {
+    await startCallFlow(conn);
+  } catch (err) {
+    console.error('❌ Error in call flow:', err);
+  }
 });
 
 // --- Call Flow
@@ -27,8 +31,8 @@ async function startCallFlow(con) {
   const agentUuid = uuid();
 
   // Step 1: Originate agent and park
-  const agentCmd = `originate {origination_uuid=${agentUuid},ignore_early_media=true,hangup_after_bridge=false,park_after_bridge=false,continue_on_fail=true,originate_timeout=30} ${AGENT_NUMBER} &park()`;
-  con.bgapi(agentCmd, res => console.log('Agent originate result:', res.getBody()));
+  const agentCmd = `originate {origination_uuid=${agentUuid},ignore_early_media=true,originate_timeout=30,continue_on_fail=true,hangup_after_bridge=false,park_after_bridge=false} ${AGENT_NUMBER} &park()`;
+  con.bgapi(agentCmd, res => console.log('📤 Agent originate result:', res.getBody()));
 
   const agentAnswered = await waitForAnswer(con, agentUuid, 30000);
   if (!agentAnswered) {
@@ -40,12 +44,12 @@ async function startCallFlow(con) {
   const leadUuid = uuid();
 
   // Step 2: Originate lead and park
-  const leadCmd = `originate {origination_uuid=${leadUuid},ignore_early_media=true,hangup_after_bridge=false,park_after_bridge=false,continue_on_fail=true,originate_timeout=30} ${LEAD_NUMBER} &park()`;
-  con.bgapi(leadCmd, res => console.log('Lead originate result:', res.getBody()));
+  const leadCmd = `originate {origination_uuid=${leadUuid},ignore_early_media=true,originate_timeout=30,continue_on_fail=true,hangup_after_bridge=false,park_after_bridge=false} ${LEAD_NUMBER} &park()`;
+  con.bgapi(leadCmd, res => console.log('📤 Lead originate result:', res.getBody()));
 
   const leadAnswered = await waitForAnswer(con, leadUuid, 30000);
   if (!leadAnswered) {
-    console.log('❌ Lead did not answer, hanging up agent...');
+    console.log('❌ Lead did not answer, hanging up agent');
     con.bgapi(`uuid_kill ${agentUuid}`);
     return;
   }
@@ -56,7 +60,7 @@ async function startCallFlow(con) {
   });
 }
 
-// --- Helper: Wait for channel answer
+// --- Wait for channel answer
 function waitForAnswer(con, uuid, timeoutMs) {
   return new Promise(resolve => {
     let resolved = false;
