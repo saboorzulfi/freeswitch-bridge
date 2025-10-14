@@ -1,93 +1,104 @@
-import ESL from 'modesl';
-import crypto from 'crypto';
+import ESL from "modesl";
 
-const HOST = '127.0.0.1';
-const PORT = 8021;
-const PASSWORD = 'ClueCon'; // change if your ESL password is different
+const FS_HOST = "127.0.0.1";
+const FS_PORT = 8021;
+const FS_PASSWORD = "ClueCon";
 
-// ✅ Use exactly the same working format from your CLI test
-const AGENT_NUMBER = 'sofia/gateway/external::didlogic/+923084283344';
-const LEAD_NUMBER  = 'sofia/gateway/external::didlogic/+923091487321';
+const AGENT_NUMBER = "+923084283344";
+const LEAD_NUMBER = "+923091487321"; // replace with actual test lead
+const GATEWAY = "external::didlogic";
 
-// --- Generate unique IDs
-function uuid() {
-  return crypto.randomUUID();
-}
-
-// --- Connect to ESL
-const conn = new ESL.Connection(HOST, PORT, PASSWORD, () => {
-  console.log('✅ Connected to FreeSWITCH ESL');
-  startCallFlow(conn).catch(err => console.error('❌ Error:', err));
+const conn = new ESL.Connection(FS_HOST, FS_PORT, FS_PASSWORD, () => {
+  console.log("✅ Connected to FreeSWITCH ESL");
+  startAgentCall(conn);
 });
 
-// --- Core Call Flow
-async function startCallFlow(con) {
-  console.log('📞 Starting agent call...');
-  const agentUuid = uuid();
+async function startAgentCall(con) {
+  const agentUuid = generateUUID();
+  console.log("📞 Starting agent call...");
 
-  // ⚡ NO SPACE after the variables block
-  const agentCmd = `originate {origination_uuid=${agentUuid},ignore_early_media=true,hangup_after_bridge=false,park_after_bridge=false,continue_on_fail=true,originate_timeout=30}${AGENT_NUMBER} &park()`;
+  // build originate string
+  const agentCmd = `originate {origination_uuid=${agentUuid},ignore_early_media=true,hangup_after_bridge=false,park_after_bridge=false,continue_on_fail=true,originate_timeout=30}sofia/gateway/${GATEWAY}/${AGENT_NUMBER} &park()`;
+  console.log("🧾 Agent Command:", agentCmd);
 
-  console.log('🧾 Agent Command:', agentCmd);
-  con.bgapi(agentCmd, res => console.log('📤 Agent originate result:', res.getBody()));
+  // subscribe to all events
+  con.events("plain", "all");
 
-  const agentAnswered = await waitForAnswer(con, agentUuid, 30000);
-  if (!agentAnswered) {
-    console.log('❌ Agent did not answer');
+  // start the originate
+  const result = await api(con, agentCmd);
+  console.log("📤 Agent originate result:", result.trim());
+
+  if (!result.startsWith("+OK")) {
+    console.log("❌ Failed to start agent call");
     return;
   }
 
-  console.log('✅ Agent answered. Dialing lead...');
-  const leadUuid = uuid();
-
-  // ⚡ Same no-space format here too
-  const leadCmd = `originate {origination_uuid=${leadUuid},ignore_early_media=true,hangup_after_bridge=false,park_after_bridge=false,continue_on_fail=true,originate_timeout=30}${LEAD_NUMBER} &park()`;
-
-  console.log('🧾 Lead Command:', leadCmd);
-  con.bgapi(leadCmd, res => console.log('📤 Lead originate result:', res.getBody()));
-
-  const leadAnswered = await waitForAnswer(con, leadUuid, 30000);
-  if (!leadAnswered) {
-    console.log('❌ Lead did not answer, hanging up agent...');
-    con.bgapi(`uuid_kill ${agentUuid}`);
-    return;
+  // wait for the real phone (B-leg) to answer
+  const answered = await waitForAgentAnswer(con, agentUuid, 60000);
+  if (answered) {
+    console.log("✅ Agent answered! Dialing lead...");
+    await callLead(con, AGENT_NUMBER, LEAD_NUMBER);
+  } else {
+    console.log("❌ Agent did not answer");
   }
+}
 
-  console.log('✅ Both answered. Bridging...');
-  con.bgapi(`uuid_bridge ${agentUuid} ${leadUuid}`, res => {
-    console.log('🔗 Bridge result:', res.getBody());
+function waitForAgentAnswer(con, aLegUuid, timeout) {
+  return new Promise((resolve) => {
+    let bLegUuid = null;
+    let done = false;
+
+    const timer = setTimeout(() => {
+      if (!done) {
+        done = true;
+        resolve(false);
+      }
+    }, timeout);
+
+    con.on("esl::event::CHANNEL_CREATE::*", (evt) => {
+      const otherLeg = evt.getHeader("Other-Leg-Unique-ID");
+      const uniqueId = evt.getHeader("Unique-ID");
+      if (otherLeg === aLegUuid) {
+        bLegUuid = uniqueId;
+        console.log(`🔄 Detected B-leg created: ${bLegUuid}`);
+      }
+    });
+
+    con.on("esl::event::CHANNEL_ANSWER::*", (evt) => {
+      const uniqueId = evt.getHeader("Unique-ID");
+      if (uniqueId === aLegUuid || uniqueId === bLegUuid) {
+        if (!done) {
+          done = true;
+          clearTimeout(timer);
+          console.log(`✅ Channel answered: ${uniqueId}`);
+          resolve(true);
+        }
+      }
+    });
   });
 }
 
-// --- Helper: Wait for answer events
-function waitForAnswer(con, uuid, timeoutMs) {
-    return new Promise(resolve => {
-      let resolved = false;
-      const timer = setTimeout(() => {
-        if (!resolved) {
-          resolved = true;
-          resolve(false);
-        }
-      }, timeoutMs);
+async function callLead(con, agentNumber, leadNumber) {
+    const leadUuid = generateUUID();
   
-      const onCreate = evt => {
-        const aLeg = evt.getHeader('Other-Leg-Unique-ID');
-        if (aLeg === uuid) {
-          const bLeg = evt.getHeader('Unique-ID');
-          console.log(`🔄 Captured B-leg UUID: ${bLeg}`);
-          // Start listening for B-leg answer
-          con.on('esl::event::CHANNEL_ANSWER::*', evt2 => {
-            if (evt2.getHeader('Unique-ID') === bLeg && !resolved) {
-              resolved = true;
-              clearTimeout(timer);
-              console.log(`✅ B-leg (phone) answered: ${bLeg}`);
-              resolve(true);
-            }
-          });
-        }
-      };
+    const cmd = `originate {origination_uuid=${leadUuid},ignore_early_media=true,bypass_media=false,proxy_media=false,hangup_after_bridge=true,originate_timeout=30}sofia/gateway/${GATEWAY}/${leadNumber} &bridge(sofia/gateway/${GATEWAY}/${agentNumber})`;
   
-      con.on('esl::event::CHANNEL_CREATE::*', onCreate);
-    });
+    console.log("📞 Dialing lead with media relay:", cmd);
+  
+    const res = await api(con, cmd);
+    console.log("📤 Lead call result:", res.trim());
   }
   
+function api(con, cmd) {
+  return new Promise((resolve) => {
+    con.api(cmd, (res) => resolve(res.getBody()));
+  });
+}
+
+function generateUUID() {
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function (c) {
+    const r = (Math.random() * 16) | 0,
+      v = c === "x" ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}

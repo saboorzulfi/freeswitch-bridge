@@ -1,104 +1,86 @@
-import ESL from "modesl";
+import ESL from 'modesl';
+import crypto from 'crypto';
 
-const FS_HOST = "127.0.0.1";
-const FS_PORT = 8021;
-const FS_PASSWORD = "ClueCon";
+const HOST = '127.0.0.1';
+const PORT = 8021;
+const PASSWORD = 'ClueCon';
 
-const AGENT_NUMBER = "+923084283344";
-const LEAD_NUMBER = "+923091487321"; // replace with actual test lead
-const GATEWAY = "external::didlogic";
-
-const conn = new ESL.Connection(FS_HOST, FS_PORT, FS_PASSWORD, () => {
-  console.log("✅ Connected to FreeSWITCH ESL");
-  startAgentCall(conn);
-});
-
-async function startAgentCall(con) {
-  const agentUuid = generateUUID();
-  console.log("📞 Starting agent call...");
-
-  // build originate string
-  const agentCmd = `originate {origination_uuid=${agentUuid},ignore_early_media=true,hangup_after_bridge=false,park_after_bridge=false,continue_on_fail=true,originate_timeout=30}sofia/gateway/${GATEWAY}/${AGENT_NUMBER} &park()`;
-  console.log("🧾 Agent Command:", agentCmd);
-
-  // subscribe to all events
-  con.events("plain", "all");
-
-  // start the originate
-  const result = await api(con, agentCmd);
-  console.log("📤 Agent originate result:", result.trim());
-
-  if (!result.startsWith("+OK")) {
-    console.log("❌ Failed to start agent call");
-    return;
-  }
-
-  // wait for the real phone (B-leg) to answer
-  const answered = await waitForAgentAnswer(con, agentUuid, 60000);
-  if (answered) {
-    console.log("✅ Agent answered! Dialing lead...");
-    await callLead(con, AGENT_NUMBER, LEAD_NUMBER);
-  } else {
-    console.log("❌ Agent did not answer");
-  }
-}
-
-function waitForAgentAnswer(con, aLegUuid, timeout) {
-  return new Promise((resolve) => {
-    let bLegUuid = null;
-    let done = false;
-
-    const timer = setTimeout(() => {
-      if (!done) {
-        done = true;
-        resolve(false);
-      }
-    }, timeout);
-
-    con.on("esl::event::CHANNEL_CREATE::*", (evt) => {
-      const otherLeg = evt.getHeader("Other-Leg-Unique-ID");
-      const uniqueId = evt.getHeader("Unique-ID");
-      if (otherLeg === aLegUuid) {
-        bLegUuid = uniqueId;
-        console.log(`🔄 Detected B-leg created: ${bLegUuid}`);
-      }
-    });
-
-    con.on("esl::event::CHANNEL_ANSWER::*", (evt) => {
-      const uniqueId = evt.getHeader("Unique-ID");
-      if (uniqueId === aLegUuid || uniqueId === bLegUuid) {
-        if (!done) {
-          done = true;
-          clearTimeout(timer);
-          console.log(`✅ Channel answered: ${uniqueId}`);
-          resolve(true);
-        }
-      }
-    });
-  });
-}
-
-async function callLead(con, agentNumber, leadNumber) {
-    const leadUuid = generateUUID();
-  
-    const cmd = `originate {origination_uuid=${leadUuid},ignore_early_media=true,bypass_media=false,proxy_media=false,hangup_after_bridge=true,originate_timeout=30}sofia/gateway/${GATEWAY}/${leadNumber} &bridge(sofia/gateway/${GATEWAY}/${agentNumber})`;
-  
-    console.log("📞 Dialing lead with media relay:", cmd);
-  
-    const res = await api(con, cmd);
-    console.log("📤 Lead call result:", res.trim());
-  }
-  
-function api(con, cmd) {
-  return new Promise((resolve) => {
-    con.api(cmd, (res) => resolve(res.getBody()));
-  });
-}
+const AGENT_NUMBER = 'sofia/gateway/external::didlogic/+923084283344';
+const LEAD_NUMBER = 'sofia/gateway/external::didlogic/+923091487321';
 
 function generateUUID() {
-  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function (c) {
-    const r = (Math.random() * 16) | 0,
-      v = c === "x" ? r : (r & 0x3) | 0x8;
-    return v.toString(16);
+  return crypto.randomUUID();
+}
+
+const conn = new ESL.Connection(HOST, PORT, PASSWORD, async () => {
+  console.log('✅ Connected to FreeSWITCH ESL');
+  await startCallFlow(conn);
+});
+
+async function startCallFlow(con) {
+  console.log('📞 Starting agent call...');
+  const agentUuid = generateUUID();
+
+  const agentCmd = `originate {origination_uuid=${agentUuid},ignore_early_media=true,bypass_media=false,hangup_after_bridge=false,park_after_bridge=false,continue_on_fail=true,originate_timeout=30} ${AGENT_NUMBER} &park()`;
+  console.log("🧾 Agent Command:", agentCmd);
+
+  con.bgapi(agentCmd, async res => {
+    console.log("📤 Agent originate result:", res.getBody());
+    const agentAnswered = await waitForAnswer(con, agentUuid, 30000);
+
+    if (!agentAnswered) {
+      console.log("❌ Agent did not answer");
+      return;
+    }
+
+    console.log("✅ Agent answered! Dialing lead...");
+
+    const leadUuid = generateUUID();
+    const leadCmd = `originate {origination_uuid=${leadUuid},ignore_early_media=true,bypass_media=false,hangup_after_bridge=true,originate_timeout=30,leg_timeout=30,continue_on_fail=true,originate_continue_on_timeout=true} ${LEAD_NUMBER} &park()`;
+
+    console.log("📞 Lead Command:", leadCmd);
+
+    con.bgapi(leadCmd, async leadRes => {
+      console.log("📤 Lead originate result:", leadRes.getBody());
+
+      const leadAnswered = await waitForAnswer(con, leadUuid, 30000);
+      if (!leadAnswered) {
+        console.log("❌ Lead did not answer, hanging up agent...");
+        con.bgapi(`uuid_kill ${agentUuid}`);
+        return;
+      }
+
+      console.log("✅ Both answered — bridging with audio...");
+
+      // ✅ This makes FreeSWITCH manage both legs (RTP + hangup)
+      con.bgapi(`uuid_bridge ${agentUuid} ${leadUuid}`, bridgeRes => {
+        console.log("🔗 Bridge result:", bridgeRes.getBody());
+      });
+    });
+  });
+}
+
+function waitForAnswer(con, uuid, timeoutMs) {
+  return new Promise(resolve => {
+    let resolved = false;
+    const timer = setTimeout(() => {
+      if (!resolved) {
+        resolved = true;
+        resolve(false);
+      }
+    }, timeoutMs);
+
+    const onAnswer = evt => {
+      const chanUuid = evt.getHeader('Unique-ID');
+      const eventName = evt.getHeader('Event-Name');
+      if (chanUuid === uuid && eventName === "CHANNEL_ANSWER" && !resolved) {
+        resolved = true;
+        clearTimeout(timer);
+        console.log(`✅ Channel answered: ${uuid}`);
+        resolve(true);
+      }
+    };
+
+    con.on('esl::event::CHANNEL_ANSWER::*', onAnswer);
   });
 }
