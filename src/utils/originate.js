@@ -44,6 +44,14 @@ export function uuidTransfer(con, aUuid, bUuid) {
   });
 }
 
+export function uuidBridge(con, aUuid, bUuid) {
+  const cmd = `uuid_bridge ${aUuid} ${bUuid}`;
+  logger.debug({ cmd }, 'BGAPI uuid_bridge');
+  return new Promise((resolve) => {
+    con.bgapi(cmd, (res) => resolve(res.getBody()));
+  });
+}
+
 export function uuidKill(con, uuid) {
   const cmd = `uuid_kill ${uuid}`;
   logger.debug({ cmd }, 'BGAPI uuid_kill');
