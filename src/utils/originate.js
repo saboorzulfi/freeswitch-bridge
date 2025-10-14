@@ -28,9 +28,10 @@ export function originateLeg(con, destination, vars = {}) {
 export function originateParked(con, destination, vars = {}) {
   const varString = buildVarString(vars);
   const cmd = `originate ${varString}${destination} &park`;
-  logger.debug({ cmd }, 'BGAPI originate');
+  logger.info({ cmd, destination, vars }, 'BGAPI originate with park');
   return new Promise((resolve) => {
     con.bgapi(cmd, (res) => {
+      logger.info({ response: res.getBody() }, 'Originate response');
       resolve(res.getBody());
     });
   });

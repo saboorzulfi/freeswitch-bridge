@@ -13,13 +13,14 @@ export class EslClient {
       logger.info({ host, port }, 'Connecting to ESL');
       const con = new esl.Connection(host, port, password, () => {
         this.connection = con;
-        logger.info('ESL connected');
+        logger.info('ESL connected successfully');
         con.subscribe([ 'all' ]);
         resolve(con);
       });
 
       con.on('error', (err) => {
-        logger.error({ err }, 'ESL error');
+        logger.error({ err }, 'ESL connection error');
+        reject(err);
       });
 
       con.on('esl::event::CHANNEL_HANGUP_COMPLETE::*', (evt) => {
