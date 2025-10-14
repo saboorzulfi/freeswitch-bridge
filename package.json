@@ -21,6 +21,9 @@
     "zod": "^4.1.11"
   },
   "devDependencies": {
+    "@types/modesl": "^1.1.6",
+    "i": "^0.3.7",
+    "npm": "^11.6.2",
     "pino-pretty": "^13.1.1"
   }
 }

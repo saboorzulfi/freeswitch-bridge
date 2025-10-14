@@ -13,7 +13,7 @@ export async function createServer() {
 
 export async function startServer() {
   await connectMongo();
-  await eslClient.connect();
+  // await eslClient.connect();
   const app = await createServer();
   const port = process.env.PORT || 3000;
   return new Promise((resolve) => {
