@@ -9,7 +9,6 @@ const PASSWORD = 'ClueCon'; // default ESL password
 const AGENT_NUMBER = 'sofia/gateway/external::didlogic/+923084283344';
 const LEAD_NUMBER  = 'sofia/gateway/external::didlogic/+923091487321';
 
-
 // --- Generate UUID
 function uuid() {
   return crypto.randomUUID();
@@ -32,8 +31,10 @@ async function startCallFlow(con) {
   const agentUuid = uuid();
 
   // Step 1: Originate agent and park
-  const agentCmd = `originate {origination_uuid=${agentUuid},ignore_early_media=true,originate_timeout=30,continue_on_fail=true,hangup_after_bridge=false,park_after_bridge=false} ${AGENT_NUMBER} &park()`;
+  const agentCmd = `originate {origination_uuid=${agentUuid},ignore_early_media=true,hangup_after_bridge=false,park_after_bridge=false,continue_on_fail=true,originate_timeout=30} ${AGENT_NUMBER} &park()`;
+  console.log('🧾 Agent Command:', agentCmd);
   con.bgapi(agentCmd, res => console.log('📤 Agent originate result:', res.getBody()));
+  
 
   const agentAnswered = await waitForAnswer(con, agentUuid, 30000);
   if (!agentAnswered) {
