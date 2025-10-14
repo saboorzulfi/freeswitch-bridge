@@ -79,13 +79,16 @@ function waitForAgentAnswer(con, aLegUuid, timeout) {
 }
 
 async function callLead(con, agentNumber, leadNumber) {
-  const leadUuid = generateUUID();
-  const cmd = `originate {origination_uuid=${leadUuid},ignore_early_media=true,originate_timeout=30}sofia/gateway/${GATEWAY}/${leadNumber} &bridge(sofia/gateway/${GATEWAY}/${agentNumber})`;
-  console.log("📞 Dialing lead:", cmd);
-  const res = await api(con, cmd);
-  console.log("📤 Lead call result:", res.trim());
-}
-
+    const leadUuid = generateUUID();
+  
+    const cmd = `originate {origination_uuid=${leadUuid},ignore_early_media=true,bypass_media=false,proxy_media=false,hangup_after_bridge=true,originate_timeout=30}sofia/gateway/${GATEWAY}/${leadNumber} &bridge(sofia/gateway/${GATEWAY}/${agentNumber})`;
+  
+    console.log("📞 Dialing lead with media relay:", cmd);
+  
+    const res = await api(con, cmd);
+    console.log("📤 Lead call result:", res.trim());
+  }
+  
 function api(con, cmd) {
   return new Promise((resolve) => {
     con.api(cmd, (res) => resolve(res.getBody()));
