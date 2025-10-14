@@ -1,6 +1,6 @@
 import { config } from '../core/config.js';
 import { logger } from '../core/logger.js';
-import { generateUuid, originateParked, waitForAnswer, uuidBridge, uuidKill, uuidTransfer } from '../utils/originate.js';
+import { generateUuid, originateParked, waitForAnswer, uuidBridge, uuidKill, uuidTransfer, originateLeg } from '../utils/originate.js';
 import CallLogsRepository from './repositories/callLogs.js';
 
 export class PreviewDialerService {
@@ -18,7 +18,7 @@ export class PreviewDialerService {
         const agentUuid = generateUuid();
         logger.info({ agentDest, agentUuid }, 'Originating to agent');
         await this.repo.logAttempt({ round, role: 'agent', destination: agentDest, uuid: agentUuid });
-        await originateParked(this.con, agentDest, {
+        await originateLeg(this.con, agentDest, {
           origination_uuid: agentUuid,
           ignore_early_media: 'true',
           call_direction: 'outbound',
@@ -28,6 +28,7 @@ export class PreviewDialerService {
           rtp_timeout: '60',
           rtp_hold_timeout: '60',
           media_timeout: '60',
+          park_after_bridge: 'false',
         });
 
         const agentAnswered = await waitForAnswer(this.con, agentUuid, agentRingSeconds * 1000);
