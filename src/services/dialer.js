@@ -48,7 +48,6 @@ export class PreviewDialerService {
         await originateParked(this.con, leadDestination, {
           origination_uuid: leadUuid,
           ignore_early_media: 'true',
-          hangup_after_bridge: 'true',
           call_direction: 'outbound',
           originate_timeout: leadRingSeconds,
           effective_caller_id_number: config.dialer.didNumber,
