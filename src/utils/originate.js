@@ -67,7 +67,6 @@ export function waitForAnswer(con, uuid, timeoutMs) {
 
     const cleanup = () => {
       con.removeListener('esl::event::CHANNEL_ANSWER::*', onAnswer);
-      con.removeListener('esl::event::CHANNEL_PARK::*', onPark);
     };
 
     const timer = setTimeout(() => {
@@ -93,17 +92,7 @@ export function waitForAnswer(con, uuid, timeoutMs) {
       }
     }
 
-    function onPark(evt) {
-      const chanUuid = evt.getHeader('Unique-ID');
-      if (chanUuid === uuid) {
-        logger.debug({ uuid: chanUuid }, 'CHANNEL_PARK received');
-        // Channels originated with &park often emit CHANNEL_PARK right after answer
-        markAnswered();
-      }
-    }
-
     con.on('esl::event::CHANNEL_ANSWER::*', onAnswer);
-    con.on('esl::event::CHANNEL_PARK::*', onPark);
   });
 }
 
