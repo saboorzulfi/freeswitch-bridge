@@ -39,6 +39,8 @@ export class PreviewDialerService {
           continue;
         }
 
+        logger.info({ agentDest, agentUuid }, 'Agent answered successfully');
+
         // Agent answered; now call the lead
         const leadUuid = generateUuid();
         logger.info({ leadDestination, leadUuid }, 'Originating to lead');
@@ -65,10 +67,22 @@ export class PreviewDialerService {
           continue;
         }
 
+        logger.info({ leadDestination, leadUuid }, 'Lead answered successfully');
+
         // Both answered; bridge
+        logger.info({ agentUuid, leadUuid }, 'Both answered, preparing to bridge');
+        
+        // Small delay to ensure both channels are stable
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
         logger.info({ agentUuid, leadUuid }, 'Bridging agent and lead');
         await uuidBridge(this.con, agentUuid, leadUuid);
+        
+        // Wait a moment to ensure bridge is established
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
         await this.repo.logOutcome({ round, role: 'bridge', destination: 'agent<->lead', outcome: 'bridged', agentUuid, leadUuid });
+        logger.info({ agentUuid, leadUuid }, 'Bridge completed successfully');
         return { disposition: 'bridged', agent: agentDest, roundsTried: round };
       }
     }
