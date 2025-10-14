@@ -30,7 +30,7 @@ export const config = {
     password: process.env.ESL_PASSWORD || defaultConfig.esl?.password || 'ClueCon',
   },
   dialer: {
-    maxRounds: numberFromEnv('MAX_ROUNDS', defaultConfig.dialer?.maxRounds ?? 3),
+    maxRounds: numberFromEnv('MAX_ROUNDS', defaultConfig.dialer?.maxRounds ?? 1),
     agentRingSeconds: numberFromEnv('AGENT_RING_SECONDS', defaultConfig.dialer?.agentRingSeconds ?? 20),
     leadRingSeconds: numberFromEnv('LEAD_RING_SECONDS', defaultConfig.dialer?.leadRingSeconds ?? 25),
     // Hardcoded dialing prefixes per request
