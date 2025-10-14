@@ -1,6 +1,6 @@
 import { config } from '../core/config.js';
 import { logger } from '../core/logger.js';
-import { generateUuid, originateParked, waitForAnswer, uuidBridge, uuidKill, uuidTransfer, originateLeg } from '../utils/originate.js';
+import { generateUuid, originateParked, waitForAnswer, waitForAnswerOnly, uuidBridge, uuidKill, uuidTransfer, originateLeg } from '../utils/originate.js';
 import CallLogsRepository from './repositories/callLogs.js';
 
 export class PreviewDialerService {
@@ -68,27 +68,27 @@ export class PreviewDialerService {
 
         logger.info({ leadDestination, leadUuid }, 'Lead answered successfully');
 
-        // Both answered; transfer agent to lead
-        logger.info({ agentUuid, leadUuid }, 'Both answered, transferring agent to lead');
+        // Both answered; bridge
+        logger.info({ agentUuid, leadUuid }, 'Both answered, preparing to bridge');
         
         // Small delay to ensure both channels are stable
         await new Promise(resolve => setTimeout(resolve, 1000));
         
-        logger.info({ agentUuid, leadUuid }, 'Transferring agent to lead');
+        logger.info({ agentUuid, leadUuid }, 'Bridging agent and lead');
         
-        // Use uuid_transfer to transfer the agent to the lead
+        // Use uuid_bridge with both channels to create a conference
         try {
-          await uuidTransfer(this.con, agentUuid, leadUuid);
-          logger.info({ agentUuid, leadUuid }, 'Transfer completed successfully');
+          const bridgeResult = await uuidBridge(this.con, agentUuid, leadUuid);
+          logger.info({ agentUuid, leadUuid, bridgeResult }, 'Bridge completed successfully');
         } catch (err) {
-          logger.error({ err, agentUuid, leadUuid }, 'Transfer failed');
-          // If transfer fails, kill both channels
+          logger.error({ err, agentUuid, leadUuid }, 'Bridge failed');
+          // If bridge fails, kill both channels
           await uuidKill(this.con, agentUuid);
           await uuidKill(this.con, leadUuid);
           continue;
         }
         
-        // Wait a moment to ensure transfer is established
+        // Wait a moment to ensure bridge is established
         await new Promise(resolve => setTimeout(resolve, 500));
         
         await this.repo.logOutcome({ round, role: 'bridge', destination: 'agent<->lead', outcome: 'bridged', agentUuid, leadUuid });

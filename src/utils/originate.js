@@ -39,17 +39,23 @@ export function originateParked(con, destination, vars = {}) {
 
 export function uuidTransfer(con, aUuid, bUuid) {
   const cmd = `uuid_transfer ${aUuid} ${bUuid}`;
-  logger.debug({ cmd }, 'BGAPI uuid_transfer');
+  logger.info({ cmd }, 'BGAPI uuid_transfer');
   return new Promise((resolve) => {
-    con.bgapi(cmd, (res) => resolve(res.getBody()));
+    con.bgapi(cmd, (res) => {
+      logger.info({ response: res.getBody() }, 'Transfer response');
+      resolve(res.getBody());
+    });
   });
 }
 
 export function uuidBridge(con, aUuid, bUuid) {
   const cmd = `uuid_bridge ${aUuid} ${bUuid}`;
-  logger.debug({ cmd }, 'BGAPI uuid_bridge');
+  logger.info({ cmd }, 'BGAPI uuid_bridge');
   return new Promise((resolve) => {
-    con.bgapi(cmd, (res) => resolve(res.getBody()));
+    con.bgapi(cmd, (res) => {
+      logger.info({ response: res.getBody() }, 'Bridge response');
+      resolve(res.getBody());
+    });
   });
 }
 
@@ -104,6 +110,41 @@ export function waitForAnswer(con, uuid, timeoutMs) {
 
     con.on('esl::event::CHANNEL_ANSWER::*', onAnswer);
     con.on('esl::event::CHANNEL_PARK::*', onPark);
+  });
+}
+
+export function waitForAnswerOnly(con, uuid, timeoutMs) {
+  return new Promise((resolve) => {
+    let resolved = false;
+
+    const cleanup = () => {
+      con.removeListener('esl::event::CHANNEL_ANSWER::*', onAnswer);
+    };
+
+    const timer = setTimeout(() => {
+      if (resolved) return;
+      resolved = true;
+      cleanup();
+      resolve(false);
+    }, timeoutMs);
+
+    function markAnswered() {
+      if (resolved) return;
+      resolved = true;
+      clearTimeout(timer);
+      cleanup();
+      resolve(true);
+    }
+
+    function onAnswer(evt) {
+      const chanUuid = evt.getHeader('Unique-ID');
+      if (chanUuid === uuid) {
+        logger.debug({ uuid: chanUuid }, 'CHANNEL_ANSWER received');
+        markAnswered();
+      }
+    }
+
+    con.on('esl::event::CHANNEL_ANSWER::*', onAnswer);
   });
 }
 
