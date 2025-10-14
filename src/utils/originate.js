@@ -14,9 +14,9 @@ export function buildVarString(vars) {
   return parts.length ? `{${parts.join(',')}}` : '';
 }
 
-export function originateParked(con, destination, vars = {}) {
+export function originateLeg(con, destination, vars = {}) {
   const varString = buildVarString(vars);
-  const cmd = `originate ${varString}${destination} &park`;
+  const cmd = `originate ${varString}${destination}`;
   logger.debug({ cmd }, 'BGAPI originate');
   return new Promise((resolve) => {
     con.bgapi(cmd, (res) => {

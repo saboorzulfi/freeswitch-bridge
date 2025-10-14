@@ -1,6 +1,6 @@
 import { config } from '../core/config.js';
 import { logger } from '../core/logger.js';
-import { generateUuid, originateParked, waitForAnswer, uuidBridge, uuidKill } from '../utils/originate.js';
+import { generateUuid, originateParked, waitForAnswer, uuidBridge, uuidKill, originateLeg } from '../utils/originate.js';
 import CallLogsRepository from './repositories/callLogs.js';
 
 export class PreviewDialerService {
