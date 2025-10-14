@@ -36,9 +36,9 @@ export function originateParked(con, destination, vars = {}) {
   });
 }
 
-export function uuidBridge(con, aUuid, bUuid) {
-  const cmd = `uuid_bridge ${aUuid} ${bUuid}`;
-  logger.debug({ cmd }, 'BGAPI uuid_bridge');
+export function uuidTransfer(con, aUuid, bUuid) {
+  const cmd = `uuid_transfer ${aUuid} ${bUuid}`;
+  logger.debug({ cmd }, 'BGAPI uuid_transfer');
   return new Promise((resolve) => {
     con.bgapi(cmd, (res) => resolve(res.getBody()));
   });

@@ -1,6 +1,6 @@
 import { config } from '../core/config.js';
 import { logger } from '../core/logger.js';
-import { generateUuid, originateParked, waitForAnswer, uuidBridge, uuidKill, originateLeg } from '../utils/originate.js';
+import { generateUuid, originateParked, waitForAnswer, uuidBridge, uuidKill, uuidTransfer } from '../utils/originate.js';
 import CallLogsRepository from './repositories/callLogs.js';
 
 export class PreviewDialerService {
@@ -21,7 +21,6 @@ export class PreviewDialerService {
         await originateParked(this.con, agentDest, {
           origination_uuid: agentUuid,
           ignore_early_media: 'true',
-          hangup_after_bridge: 'true',
           call_direction: 'outbound',
           originate_timeout: agentRingSeconds,
           effective_caller_id_number: config.dialer.didNumber,
@@ -76,13 +75,24 @@ export class PreviewDialerService {
         await new Promise(resolve => setTimeout(resolve, 1000));
         
         logger.info({ agentUuid, leadUuid }, 'Bridging agent and lead');
-        await uuidBridge(this.con, agentUuid, leadUuid);
+        
+        // Use uuid_bridge with both channels to create a conference
+        try {
+          await uuidBridge(this.con, agentUuid, leadUuid);
+          logger.info({ agentUuid, leadUuid }, 'Bridge completed successfully');
+        } catch (err) {
+          logger.error({ err, agentUuid, leadUuid }, 'Bridge failed');
+          // If bridge fails, kill both channels
+          await uuidKill(this.con, agentUuid);
+          await uuidKill(this.con, leadUuid);
+          continue;
+        }
         
         // Wait a moment to ensure bridge is established
         await new Promise(resolve => setTimeout(resolve, 500));
         
         await this.repo.logOutcome({ round, role: 'bridge', destination: 'agent<->lead', outcome: 'bridged', agentUuid, leadUuid });
-        logger.info({ agentUuid, leadUuid }, 'Bridge completed successfully');
+        logger.info({ agentUuid, leadUuid }, 'Bridge process completed');
         return { disposition: 'bridged', agent: agentDest, roundsTried: round };
       }
     }
