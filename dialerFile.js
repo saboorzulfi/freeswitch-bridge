@@ -81,13 +81,29 @@ function waitForAgentAnswer(con, aLegUuid, timeout) {
 async function callLead(con, agentUuid, leadNumber) {
     const leadUuid = generateUUID();
   
-    // This bridges the lead directly to the agent’s existing call (by UUID)
-    const cmd = `originate {origination_uuid=${leadUuid},ignore_early_media=true,bypass_media=false,proxy_media=false,hangup_after_bridge=true,originate_timeout=30}sofia/gateway/${GATEWAY}/${leadNumber} &uuid_bridge(${leadUuid},${agentUuid})`;
-  
-    console.log("📞 Dialing lead and bridging to agent UUID:", cmd);
+    // Step 1: originate the lead and park it
+    const cmd = `originate {origination_uuid=${leadUuid},ignore_early_media=true,bypass_media=false,proxy_media=false,hangup_after_bridge=true,originate_timeout=30}sofia/gateway/${GATEWAY}/${leadNumber} &park()`;
+    console.log("📞 Dialing lead (will park)...", cmd);
   
     const res = await api(con, cmd);
-    console.log("📤 Lead call result:", res.trim());
+    console.log("📤 Lead originate result:", res.trim());
+  
+    if (!res.startsWith("+OK")) {
+      console.log("❌ Failed to originate lead");
+      return;
+    }
+  
+    // Step 2: Wait until the lead answers
+    const answered = await waitForAgentAnswer(con, leadUuid, 60000);
+    if (!answered) {
+      console.log("❌ Lead did not answer");
+      return;
+    }
+  
+    // Step 3: When lead answers, bridge with agent’s live UUID
+    console.log(`🔗 Bridging agent (${agentUuid}) <-> lead (${leadUuid})`);
+    const bridgeRes = await api(con, `uuid_bridge ${agentUuid} ${leadUuid}`);
+    console.log("📤 Bridge result:", bridgeRes.trim());
   }
   
 function api(con, cmd) {
