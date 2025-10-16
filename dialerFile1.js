@@ -57,7 +57,9 @@ function setupEventListeners() {
     connection.on("esl::event::CHANNEL_ANSWER::*", (evt) => {
         const uuid = evt.getHeader("Unique-ID");
         const direction = evt.getHeader("Call-Direction");
-        console.log(`📞 Channel answered: ${uuid} | Direction: ${direction}`);
+        const callerIdName = evt.getHeader("Caller-Caller-ID-Name");
+        const callerIdNumber = evt.getHeader("Caller-Caller-ID-Number");
+        console.log(`📞 Channel answered: ${uuid} | Direction: ${direction} | Caller: ${callerIdName} (${callerIdNumber})`);
     });
 
     connection.on("esl::event::CHANNEL_BRIDGE::*", (evt) => {
@@ -99,8 +101,8 @@ async function startAgentCall() {
     const agentUuid = generateUUID();
     console.log("📞 Starting agent call...");
 
-    // Build originate string - Fixed syntax
-    const agentCmd = `originate {origination_uuid=${agentUuid},ignore_early_media=true,hangup_after_bridge=false,park_after_bridge=false,continue_on_fail=true,originate_timeout=30}sofia/gateway/${GATEWAY}/${AGENT_NUMBER} &park()`;
+    // Build originate string with proper media settings
+    const agentCmd = `originate {origination_uuid=${agentUuid},ignore_early_media=false,hangup_after_bridge=false,park_after_bridge=false,continue_on_fail=true,originate_timeout=30,bypass_media=false,proxy_media=false}sofia/gateway/${GATEWAY}/${AGENT_NUMBER} &park()`;
     console.log("🧾 Agent Command:", agentCmd);
 
     // Start the originate
@@ -149,8 +151,8 @@ async function callLead(agentUuid) {
     
     console.log(`📞 Dialing lead: ${LEAD_NUMBER}`);
     
-    // Step 1: originate the lead and park it
-    const leadCmd = `originate {origination_uuid=${leadUuid},ignore_early_media=true,bypass_media=false,proxy_media=false,hangup_after_bridge=true,originate_timeout=30}sofia/gateway/${GATEWAY}/${LEAD_NUMBER} &park()`;
+    // Step 1: originate the lead and park it with proper media settings
+    const leadCmd = `originate {origination_uuid=${leadUuid},ignore_early_media=false,bypass_media=false,proxy_media=false,hangup_after_bridge=true,originate_timeout=30}sofia/gateway/${GATEWAY}/${LEAD_NUMBER} &park()`;
     console.log("🧾 Lead Command:", leadCmd);
     
     const res = await api(leadCmd);
@@ -170,8 +172,21 @@ async function callLead(agentUuid) {
     
     // Step 3: When lead answers, bridge with agent
     console.log(`🔗 Bridging agent (${agentUuid}) <-> lead (${leadUuid})`);
+    
+    // Check media status before bridging
+    const agentMedia = await api(`uuid_dump ${agentUuid}`);
+    const leadMedia = await api(`uuid_dump ${leadUuid}`);
+    console.log("🎧 Agent media status:", agentMedia.includes("media") ? "Active" : "Inactive");
+    console.log("🎧 Lead media status:", leadMedia.includes("media") ? "Active" : "Inactive");
+    
     const bridgeRes = await api(`uuid_bridge ${agentUuid} ${leadUuid}`);
     console.log("📤 Bridge result:", bridgeRes.trim());
+    
+    if (bridgeRes.startsWith("+OK")) {
+        console.log("✅ Bridge successful! Audio should now be flowing between agent and lead.");
+    } else {
+        console.log("❌ Bridge failed:", bridgeRes);
+    }
 }
 
 /**
